@@ -1,4 +1,4 @@
-<%- include('../layouts/app', { title, body: `
+<%- include('../layouts/app_header', { title }) %>
 <div class="page-header">
   <h1>All Items</h1>
   <a href="/admin/upload" class="btn btn-primary btn-sm"><%- icon('upload') %> Upload</a>
@@ -40,7 +40,7 @@
           <td style="font-size:12px;color:var(--text-3);white-space:nowrap;"><%= new Date(item.created_at).toLocaleDateString() %></td>
           <td>
             <form method="POST" action="/admin/items/<%= item.id %>/delete" style="display:inline;">
-              <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="return confirm('Delete \\'<%= item.title.replace(/'/g,\\'\\\\\\'\\'') %>\\'?')"><%- icon('trash-2') %></button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="return confirm('Delete \'<%= item.title.replace(/'/g, '\\\'') %>\'?')"><%- icon('trash-2') %></button>
             </form>
           </td>
         </tr>
@@ -50,4 +50,4 @@
   </div>
   <% } %>
 </div>
-` }) %>
+<%- include('../layouts/app_footer') %>

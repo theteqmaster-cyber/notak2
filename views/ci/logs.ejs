@@ -1,4 +1,4 @@
-<%- include('../layouts/app', { title, body: `
+<%- include('../layouts/app_header', { title }) %>
 <div class="page-header"><h1>Activity Logs</h1></div>
 <form method="GET" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;align-items:flex-end;">
   <div class="form-group" style="margin:0;"><label class="form-label">Event Type</label><input type="text" name="type" class="form-control" placeholder="e.g. login" value="<%= filters.type||'' %>"></div>
@@ -23,4 +23,4 @@
     </tbody>
   </table></div>
 </div>
-` }) %>
+<%- include('../layouts/app_footer') %>

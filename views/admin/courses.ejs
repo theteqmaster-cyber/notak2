@@ -1,4 +1,4 @@
-<%- include('../layouts/app', { title, body: `
+<%- include('../layouts/app_header', { title }) %>
 <div class="page-header"><h1>Courses</h1></div>
 
 <% if (activeSemester) { %>
@@ -38,4 +38,4 @@
     </table>
   </div>
 </div>
-` }) %>
+<%- include('../layouts/app_footer') %>

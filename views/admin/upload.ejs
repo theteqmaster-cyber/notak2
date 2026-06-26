@@ -1,4 +1,4 @@
-<%- include('../layouts/app', { title, body: `
+<%- include('../layouts/app_header', { title }) %>
 <div class="page-header">
   <h1>Upload Material</h1>
   <a href="/admin" class="btn btn-ghost btn-sm">← Back</a>
@@ -84,4 +84,4 @@ document.getElementById('fileInput').addEventListener('change', e => {
   if (f) document.getElementById('fileInfo').style.display = 'block', document.getElementById('fileInfo').textContent = f.name + ' · ' + (f.size/1048576).toFixed(1) + ' MB';
 });
 </script>
-` }) %>
+<%- include('../layouts/app_footer') %>

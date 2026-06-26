@@ -1,4 +1,4 @@
-<%- include('layouts/app', { title, body: `
+<%- include('layouts/app_header', { title }) %>
 <div class="page-header">
   <div><h1><%= semester.name %></h1><p><%= semester.academic_year || '' %> · <span class="badge badge-<%= semester.status %>"><%= semester.status %></span></p></div>
 </div>
@@ -15,4 +15,4 @@
 <% } else { %>
 <div class="empty-state"><%- icon('book') %><h3>No courses yet</h3><p>An admin will add courses to this semester.</p></div>
 <% } %>
-` }) %>
+<%- include('layouts/app_footer') %>

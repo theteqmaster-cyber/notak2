@@ -1,4 +1,4 @@
-<%- include('../layouts/app', { title, body: `
+<%- include('../layouts/app_header', { title }) %>
 <div class="stats-grid" style="margin-bottom:24px;">
   <% [
     {label:'Logins Today',value:stats.logins_today,icon:'users',color:'#22C55E',bg:'#DCFCE7'},
@@ -52,4 +52,4 @@
     </table></div>
   </div>
 </div>
-` }) %>
+<%- include('../layouts/app_footer') %>

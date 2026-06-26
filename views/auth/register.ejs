@@ -1,4 +1,4 @@
-<% const body = `
+<%- include('../layouts/auth_header', { title }) %>
 <h2>Create account</h2>
 <p style="color:var(--text-3);margin-bottom:24px;">Join Notak2 to access your semester materials</p>
 
@@ -28,5 +28,4 @@
 <p style="text-align:center;margin-top:20px;font-size:13px;color:var(--text-3);">
   Already have an account? <a href="/login" style="color:var(--primary);font-weight:600;">Sign in</a>
 </p>
-`; %>
-<%- include('../layouts/auth', { body }) %>
+<%- include('../layouts/auth_footer') %>

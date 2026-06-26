@@ -1,4 +1,4 @@
-<%- include('layouts/app', { title, body: `
+<%- include('layouts/app_header', { title }) %>
 <div class="page-header">
   <div>
     <h1><%= item.title %></h1>
@@ -32,4 +32,4 @@
     <a href="<%= item.external_url %>" target="_blank" rel="noopener" class="btn btn-primary">Open External Source</a>
   </div>
 <% } %>
-` }) %>
+<%- include('layouts/app_footer') %>

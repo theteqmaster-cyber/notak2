@@ -1,4 +1,4 @@
-<%- include('../layouts/app', { body: ` 
+<%- include('layouts/app_header', { title }) %>
 <% if (semester) { %>
 <div style="background:var(--primary);color:#fff;border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
   <div>
@@ -40,4 +40,4 @@
   </div>
 </div>
 <% } %>
-` }) %>
+<%- include('layouts/app_footer') %>

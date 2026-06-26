@@ -1,4 +1,4 @@
-<%- include('layouts/app', { title, body: `
+<%- include('layouts/app_header', { title }) %>
 <% if (!semesters.length) { %>
 <div class="empty-state"><%- icon('archive') %><h3>No archived semesters</h3><p>Semesters appear here once archived.</p></div>
 <% } else { %>
@@ -28,4 +28,4 @@
   <% }) %>
 </div>
 <% } %>
-` }) %>
+<%- include('layouts/app_footer') %>

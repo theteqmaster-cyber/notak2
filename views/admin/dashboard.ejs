@@ -1,4 +1,4 @@
-<%- include('../layouts/app', { title, body: `
+<%- include('../layouts/app_header', { title }) %>
 <div class="stats-grid">
   <% [
     {label:'Total Items',value:stats.items,icon:'files',color:'#4F6EF7',bg:'#EEF1FE'},
@@ -47,4 +47,4 @@
   </div>
 </div>
 <% } %>
-` }) %>
+<%- include('../layouts/app_footer') %>
