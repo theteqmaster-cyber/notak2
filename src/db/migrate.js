@@ -66,22 +66,13 @@ const SQL = `
     is_flagged  BOOLEAN NOT NULL DEFAULT false,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
-
-  CREATE TABLE IF NOT EXISTS semester_archives (
-    id           SERIAL PRIMARY KEY,
-    semester_id  INTEGER NOT NULL REFERENCES semesters(id) ON DELETE CASCADE,
-    generated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    zip_key      TEXT,
-    zip_name     TEXT,
-    zip_size     BIGINT,
-    status       TEXT NOT NULL DEFAULT 'generating' CHECK (status IN ('generating','ready','failed')),
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
 `;
 
 async function migrate() {
   const client = await pool.connect();
   try {
+    // Clean up any legacy zip archives table
+    await client.query('DROP TABLE IF EXISTS semester_archives CASCADE');
     await client.query(SQL);
     console.log('[migrate] Schema up to date');
 
