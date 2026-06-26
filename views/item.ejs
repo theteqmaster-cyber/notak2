@@ -1,0 +1,35 @@
+<%- include('layouts/app', { title, body: `
+<div class="page-header">
+  <div>
+    <h1><%= item.title %></h1>
+    <p><a href="/course/<%= item.course_id %>" style="color:var(--text-3);text-decoration:none;"><%= item.course_name %></a> · <span class="badge badge-<%= item.type %>"><%= TYPE_LABELS[item.type] %></span></p>
+  </div>
+  <% if (item.file_key) { %>
+  <a href="/item/<%= item.id %>/download" class="btn btn-primary"><%- icon('download') %> Download</a>
+  <% } else if (item.external_url) { %>
+  <a href="<%= item.external_url %>" target="_blank" rel="noopener" class="btn btn-primary"><%- icon('link') %> Open Source</a>
+  <% } %>
+</div>
+
+<% if (item.description) { %>
+<p style="color:var(--text-2);margin-bottom:20px;"><%= item.description %></p>
+<% } %>
+
+<% if (fileUrl && item.file_mime === 'application/pdf') { %>
+  <iframe src="<%= fileUrl %>" class="pdf-frame" title="<%= item.title %>"></iframe>
+<% } else if (fileUrl && item.file_mime && item.file_mime.startsWith('image/')) { %>
+  <img src="<%= fileUrl %>" style="max-width:100%;border-radius:var(--radius-lg);" alt="<%= item.title %>">
+<% } else if (item.file_key) { %>
+  <div class="card" style="text-align:center;padding:48px;">
+    <%- icon('download') %>
+    <p style="color:var(--text-3);margin:12px 0 20px;"><%= item.file_name %><% if (item.file_size) { %> · <%= (item.file_size/1048576).toFixed(1) %> MB<% } %></p>
+    <a href="/item/<%= item.id %>/download" class="btn btn-primary"><%- icon('download') %> Download File</a>
+  </div>
+<% } else if (item.external_url) { %>
+  <div class="card" style="text-align:center;padding:48px;">
+    <%- icon('link') %>
+    <p style="margin:12px 0 20px;word-break:break-all;color:var(--text-3);"><%= item.external_url %></p>
+    <a href="<%= item.external_url %>" target="_blank" rel="noopener" class="btn btn-primary">Open External Source</a>
+  </div>
+<% } %>
+` }) %>

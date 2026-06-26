@@ -1,0 +1,43 @@
+<%- include('../layouts/app', { body: ` 
+<% if (semester) { %>
+<div style="background:var(--primary);color:#fff;border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+  <div>
+    <div style="font-weight:700;font-size:16px;"><%= semester.name %></div>
+    <div style="opacity:.8;font-size:13px;"><%= semester.academic_year || '' %> · <%= semester.course_count %> courses</div>
+  </div>
+  <a href="/semester/<%= semester.id %>" style="background:rgba(255,255,255,.2);color:#fff;padding:7px 14px;border-radius:var(--radius);font-weight:600;font-size:13px;text-decoration:none;">View Semester →</a>
+</div>
+<% } else { %>
+<div style="background:#FEF3C7;color:#92400E;border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:20px;">
+  <%- icon('triangle-alert') %> No active semester. Ask your admin to create one.
+</div>
+<% } %>
+
+<div class="stats-grid">
+  <% [['N','Notes','#4F6EF7','#EEF1FE'],['A','Assignments','#F59E0B','#FEF3C7'],['P','Presentations','#8B5CF6','#EDE9FE'],['T','Tests','#EF4444','#FEE2E2'],['S','Sources','#22C55E','#DCFCE7']].forEach(([t,label,color,bg]) => { %>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:<%= bg %>;color:<%= color %>;"><%- icon(TYPE_ICONS[t]) %></div>
+    <div class="stat-value"><%= counts[t] || 0 %></div>
+    <div class="stat-label"><%= label %></div>
+  </div>
+  <% }) %>
+</div>
+
+<% if (recent.length) { %>
+<div class="card">
+  <div class="card-header"><span class="card-title">Recent Uploads</span></div>
+  <div class="item-list">
+    <% recent.forEach(item => { %>
+    <div class="item-row type-<%= item.type %>">
+      <div class="item-icon"><%- icon(TYPE_ICONS[item.type]) %></div>
+      <div class="item-info">
+        <a href="/item/<%= item.id %>" class="item-title" style="text-decoration:none;color:inherit;"><%= item.title %></a>
+        <div class="item-meta"><span><%= item.course_name %></span><span><%= new Date(item.created_at).toLocaleDateString() %></span></div>
+      </div>
+      <span class="badge badge-<%= item.type %>"><%= TYPE_LABELS[item.type] %></span>
+    </div>
+    <% }) %>
+  </div>
+</div>
+<% } %>
+` }) %>

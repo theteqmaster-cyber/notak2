@@ -1,0 +1,32 @@
+<% const body = `
+<h2>Create account</h2>
+<p style="color:var(--text-3);margin-bottom:24px;">Join Notak2 to access your semester materials</p>
+
+<% if (error) { %>
+<div class="flash flash-error"><%- icon('circle-x') %> <%= error %></div>
+<% } %>
+
+<form method="POST" action="/register">
+  <div class="form-group">
+    <label class="form-label">Full name</label>
+    <input type="text" name="name" class="form-control" placeholder="Your name" required autofocus>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Email address</label>
+    <input type="email" name="email" class="form-control" placeholder="you@example.com" required>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Password</label>
+    <input type="password" name="password" class="form-control" placeholder="Min. 8 characters" required minlength="8">
+  </div>
+  <div class="form-group">
+    <label class="form-label">Confirm password</label>
+    <input type="password" name="password_confirm" class="form-control" placeholder="••••••••" required>
+  </div>
+  <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;">Create Account</button>
+</form>
+<p style="text-align:center;margin-top:20px;font-size:13px;color:var(--text-3);">
+  Already have an account? <a href="/login" style="color:var(--primary);font-weight:600;">Sign in</a>
+</p>
+`; %>
+<%- include('../layouts/auth', { body }) %>

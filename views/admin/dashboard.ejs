@@ -1,0 +1,50 @@
+<%- include('../layouts/app', { title, body: `
+<div class="stats-grid">
+  <% [
+    {label:'Total Items',value:stats.items,icon:'files',color:'#4F6EF7',bg:'#EEF1FE'},
+    {label:'Courses',value:stats.courses,icon:'book',color:'#22C55E',bg:'#DCFCE7'},
+    {label:'Students',value:stats.students,icon:'users',color:'#8B5CF6',bg:'#EDE9FE'},
+    {label:'Semesters',value:stats.semesters,icon:'calendar',color:'#F59E0B',bg:'#FEF3C7'},
+    {label:'Notes',value:stats.types.N||0,icon:'notebook-pen',color:'#4F6EF7',bg:'#EEF1FE'},
+    {label:'Assignments',value:stats.types.A||0,icon:'clipboard-list',color:'#D97706',bg:'#FEF3C7'},
+    {label:'Presentations',value:stats.types.P||0,icon:'presentation',color:'#7C3AED',bg:'#EDE9FE'},
+    {label:'Tests',value:stats.types.T||0,icon:'file-check',color:'#DC2626',bg:'#FEE2E2'},
+  ].forEach(s => { %>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:<%= s.bg %>;color:<%= s.color %>;"><%- icon(s.icon) %></div>
+    <div class="stat-value"><%= s.value %></div>
+    <div class="stat-label"><%= s.label %></div>
+  </div>
+  <% }) %>
+</div>
+
+<div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;">
+  <a href="/admin/upload" class="btn btn-primary"><%- icon('upload') %> Upload Material</a>
+  <a href="/admin/semesters" class="btn btn-secondary"><%- icon('calendar') %> Semesters</a>
+  <a href="/admin/courses" class="btn btn-secondary"><%- icon('book') %> Courses</a>
+  <a href="/admin/users" class="btn btn-secondary"><%- icon('users') %> Users</a>
+</div>
+
+<% if (recent.length) { %>
+<div class="card">
+  <div class="card-header"><span class="card-title">Recent Uploads</span><a href="/admin/items" class="btn btn-ghost btn-sm">View all</a></div>
+  <div class="item-list">
+    <% recent.forEach(item => { %>
+    <div class="item-row type-<%= item.type %>">
+      <div class="item-icon"><%- icon({N:'notebook-pen',A:'clipboard-list',P:'presentation',T:'file-check',S:'library'}[item.type]) %></div>
+      <div class="item-info">
+        <a href="/item/<%= item.id %>" class="item-title" style="text-decoration:none;color:inherit;"><%= item.title %></a>
+        <div class="item-meta"><span><%= item.course_name %></span><span><%= new Date(item.created_at).toLocaleDateString() %></span></div>
+      </div>
+      <div class="item-actions">
+        <span class="badge badge-<%= item.type %>"><%= TYPE_LABELS[item.type] %></span>
+        <form method="POST" action="/admin/items/<%= item.id %>/delete" style="margin:0;">
+          <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="return confirm('Delete this item?')"><%- icon('trash-2') %></button>
+        </form>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+</div>
+<% } %>
+` }) %>

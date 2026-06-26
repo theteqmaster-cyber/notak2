@@ -1,0 +1,87 @@
+<%- include('../layouts/app', { title, body: `
+<div class="page-header">
+  <h1>Upload Material</h1>
+  <a href="/admin" class="btn btn-ghost btn-sm">← Back</a>
+</div>
+
+<% if (error) { %><div class="flash flash-error"><%- icon('circle-x') %> <%= error %></div><% } %>
+
+<div style="max-width:680px;">
+<form method="POST" action="/admin/upload" enctype="multipart/form-data">
+
+  <div class="form-group">
+    <label class="form-label">Content Type</label>
+    <div class="type-selector" id="typeSel">
+      <% [['N','Notes'],['A','Assignments'],['P','Presentations'],['T','Tests'],['S','Sources']].forEach(([t,label]) => { %>
+      <button type="button" class="type-btn <%= (old.type||'N')===t?'selected':'' %>" data-type="<%= t %>"><%= label %></button>
+      <% }) %>
+    </div>
+    <input type="hidden" name="type" id="typeInput" value="<%= old.type||'N' %>">
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Course</label>
+    <select name="course_id" class="form-control" required>
+      <option value="">— Select course —</option>
+      <% courses.forEach(c => { %>
+      <option value="<%= c.id %>" <%= old.course_id==c.id?'selected':'' %>><%= c.name %> (<%= c.semester_name %>)</option>
+      <% }) %>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Title</label>
+    <input type="text" name="title" class="form-control" placeholder="e.g. Week 3 Lecture Notes" value="<%= old.title||'' %>" required>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Description <span style="color:var(--text-3);font-weight:400;">(optional)</span></label>
+    <textarea name="description" class="form-control" placeholder="Brief description…"><%= old.description||'' %></textarea>
+  </div>
+
+  <div id="fileSection" class="form-group">
+    <label class="form-label">File</label>
+    <div class="drop-zone" id="dropZone">
+      <%- icon('upload') %>
+      <p><strong>Click to choose</strong> or drag &amp; drop</p>
+      <p>PDF, DOCX, PPTX, images — up to 500MB</p>
+      <input type="file" name="file" id="fileInput" style="position:absolute;inset:0;opacity:0;cursor:pointer;">
+    </div>
+    <div id="fileInfo" style="display:none;font-size:13px;color:var(--text-2);margin-top:6px;"></div>
+  </div>
+
+  <div id="urlSection" class="form-group" style="display:none;">
+    <label class="form-label">External URL</label>
+    <input type="url" name="external_url" class="form-control" placeholder="https://…" value="<%= old.external_url||'' %>">
+    <div class="form-hint">For Sources — links to external references, articles, or resources.</div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Tags <span style="color:var(--text-3);font-weight:400;">(optional, comma-separated)</span></label>
+    <input type="text" name="tags" class="form-control" placeholder="e.g. midterm, chapter 4" value="<%= old.tags||'' %>">
+  </div>
+
+  <button type="submit" class="btn btn-primary"><%- icon('upload') %> Upload</button>
+</form>
+</div>
+
+<script>
+const typeBtns = document.querySelectorAll('.type-btn');
+const typeInput = document.getElementById('typeInput');
+const fileSection = document.getElementById('fileSection');
+const urlSection = document.getElementById('urlSection');
+
+typeBtns.forEach(btn => btn.addEventListener('click', () => {
+  typeBtns.forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  typeInput.value = btn.dataset.type;
+  fileSection.style.display = btn.dataset.type === 'S' ? 'none' : '';
+  urlSection.style.display  = btn.dataset.type === 'S' ? '' : 'none';
+}));
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) document.getElementById('fileInfo').style.display = 'block', document.getElementById('fileInfo').textContent = f.name + ' · ' + (f.size/1048576).toFixed(1) + ' MB';
+});
+</script>
+` }) %>

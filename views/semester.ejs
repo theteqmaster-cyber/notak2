@@ -1,0 +1,18 @@
+<%- include('layouts/app', { title, body: `
+<div class="page-header">
+  <div><h1><%= semester.name %></h1><p><%= semester.academic_year || '' %> · <span class="badge badge-<%= semester.status %>"><%= semester.status %></span></p></div>
+</div>
+<% if (courses.length) { %>
+<div class="course-grid">
+  <% courses.forEach(c => { %>
+  <a href="/course/<%= c.id %>" class="course-card">
+    <div class="course-dot" style="background:<%= c.color || '#4F6EF7' %>"></div>
+    <div class="course-name"><%= c.name %></div>
+    <div class="course-meta"><%= c.item_count %> items<% if (c.code) { %> · <%= c.code %><% } %></div>
+  </a>
+  <% }) %>
+</div>
+<% } else { %>
+<div class="empty-state"><%- icon('book') %><h3>No courses yet</h3><p>An admin will add courses to this semester.</p></div>
+<% } %>
+` }) %>
