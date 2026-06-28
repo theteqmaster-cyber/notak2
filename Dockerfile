@@ -1,10 +1,10 @@
-FROM node:20-slim
+FROM node:20
 
 WORKDIR /app
 
 # Only copy manifests first (caches npm install layer)
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Copy app source
 COPY . .
