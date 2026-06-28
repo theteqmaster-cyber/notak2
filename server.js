@@ -16,7 +16,7 @@ const IS_WEB = process.env.DEVICE_MODE === 'web';
 const app = express();
 
 // ── Trust proxy ───────────────────────────────────────────────────────────────
-app.set('trust proxy', 1);
+app.set('trust proxy', true); // Trust all proxies for Render
 
 // ── View engine (auth + admin + ci pages only) ────────────────────────────────
 app.set('view engine', 'ejs');
@@ -35,9 +35,10 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'notak2-dev-secret-change-me',
   resave: false,
   saveUninitialized: false,
+  proxy: true, // Force proxy recognition
   cookie: {
     maxAge:   7 * 24 * 60 * 60 * 1000,
-    secure:   process.env.NODE_ENV === 'production',
+    secure:   false, // Render handles HTTPS termination, force false for debugging
     httpOnly: true,
     sameSite: 'lax',
   },
