@@ -1,50 +1,166 @@
-<%- include('../layouts/app_header', { title }) %>
-<div class="stats-grid">
-  <% [
-    {label:'Total Items',value:stats.items,icon:'files',color:'#4F6EF7',bg:'#EEF1FE'},
-    {label:'Courses',value:stats.courses,icon:'book',color:'#22C55E',bg:'#DCFCE7'},
-    {label:'Students',value:stats.students,icon:'users',color:'#8B5CF6',bg:'#EDE9FE'},
-    {label:'Semesters',value:stats.semesters,icon:'calendar',color:'#F59E0B',bg:'#FEF3C7'},
-    {label:'Notes',value:stats.types.N||0,icon:'notebook-pen',color:'#4F6EF7',bg:'#EEF1FE'},
-    {label:'Assignments',value:stats.types.A||0,icon:'clipboard-list',color:'#D97706',bg:'#FEF3C7'},
-    {label:'Presentations',value:stats.types.P||0,icon:'presentation',color:'#7C3AED',bg:'#EDE9FE'},
-    {label:'Tests',value:stats.types.T||0,icon:'file-check',color:'#DC2626',bg:'#FEE2E2'},
-  ].forEach(s => { %>
-  <div class="stat-card">
-    <div class="stat-icon" style="background:<%= s.bg %>;color:<%= s.color %>;"><%- icon(s.icon) %></div>
-    <div class="stat-value"><%= s.value %></div>
-    <div class="stat-label"><%= s.label %></div>
-  </div>
-  <% }) %>
-</div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Admin — Notak2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<div class="admin-shell">
 
-<div style="display:flex;gap:10px;margin-bottom:24px;flex-wrap:wrap;">
-  <a href="/admin/upload" class="btn btn-primary"><%- icon('upload') %> Upload Material</a>
-  <a href="/admin/semesters" class="btn btn-secondary"><%- icon('calendar') %> Semesters</a>
-  <a href="/admin/courses" class="btn btn-secondary"><%- icon('book') %> Courses</a>
-  <a href="/admin/users" class="btn btn-secondary"><%- icon('users') %> Users</a>
-</div>
-
-<% if (recent.length) { %>
-<div class="card">
-  <div class="card-header"><span class="card-title">Recent Uploads</span><a href="/admin/items" class="btn btn-ghost btn-sm">View all</a></div>
-  <div class="item-list">
-    <% recent.forEach(item => { %>
-    <div class="item-row type-<%= item.type %>">
-      <div class="item-icon"><%- icon({N:'notebook-pen',A:'clipboard-list',P:'presentation',T:'file-check',S:'library'}[item.type]) %></div>
-      <div class="item-info">
-        <a href="/item/<%= item.id %>" class="item-title" style="text-decoration:none;color:inherit;"><%= item.title %></a>
-        <div class="item-meta"><span><%= item.course_name %></span><span><%= new Date(item.created_at).toLocaleDateString() %></span></div>
-      </div>
-      <div class="item-actions">
-        <span class="badge badge-<%= item.type %>"><%= TYPE_LABELS[item.type] %></span>
-        <form method="POST" action="/admin/items/<%= item.id %>/delete" style="margin:0;">
-          <button class="btn btn-ghost btn-sm" style="color:var(--danger);" onclick="return confirm('Delete this item?')"><%- icon('trash-2') %></button>
-        </form>
-      </div>
+  <header class="admin-header">
+    <div class="admin-brand">
+      <span class="brand-hex">⬡</span>
+      <span class="brand-text">Notak2 <em>Admin</em></span>
     </div>
-    <% }) %>
+    <div class="admin-header-right">
+      <span class="admin-user-pill"><%= user.name %></span>
+      <a href="/logout" class="admin-logout-btn">Sign Out</a>
+    </div>
+  </header>
+
+  <main class="admin-main">
+
+    <% if (flash) { %>
+    <div class="flash flash-<%= flash.type %>"><%= flash.message %></div>
+    <% } %>
+
+    <!-- Stats row -->
+    <div class="stats-row" id="admin-stats-row">
+      <div class="stat-card"><div class="stat-val" id="stat-users">—</div><div class="stat-lbl">Users</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-devices">—</div><div class="stat-lbl">Devices</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-notes">—</div><div class="stat-lbl">Notes</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-files">—</div><div class="stat-lbl">Files</div></div>
+    </div>
+
+    <!-- Users -->
+    <section class="admin-section">
+      <h2 class="section-title">Accounts (<%= users.length %>)</h2>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody>
+          <% for (const u of users) { %>
+          <tr class="<%= !u.is_active ? 'row-inactive' : '' %>">
+            <td><strong><%= u.name %></strong></td>
+            <td><%= u.email %></td>
+            <td><span class="role-badge role-<%= u.role %>"><%= u.role %></span></td>
+            <td><span class="status-dot <%= u.is_active ? 'active' : 'inactive' %>"></span> <%= u.is_active ? 'Active' : 'Inactive' %></td>
+            <td class="muted"><%= new Date(u.created_at).toLocaleDateString() %></td>
+            <td class="actions">
+              <% if (!['admin','ci'].includes(u.role)) { %>
+              <form method="POST" action="/admin/users/<%= u.id %>/toggle" style="display:inline">
+                <button class="action-btn <%= u.is_active ? 'warn' : 'ok' %>" title="<%= u.is_active ? 'Deactivate' : 'Activate' %>">
+                  <%= u.is_active ? '⏸' : '▶' %>
+                </button>
+              </form>
+              <button class="action-btn danger" onclick="openResetModal(<%= u.id %>)" title="Reset password">🔑</button>
+              <form method="POST" action="/admin/users/<%= u.id %>/delete" style="display:inline"
+                    onsubmit="return confirm('Delete <%= u.name %>? This cannot be undone.')">
+                <button class="action-btn danger" title="Delete">🗑</button>
+              </form>
+              <% } else { %>
+              <span class="muted" style="font-size:12px">Protected</span>
+              <% } %>
+            </td>
+          </tr>
+          <% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Devices -->
+    <section class="admin-section">
+      <h2 class="section-title">Registered Devices (<%= devices.length %>)</h2>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Device Name</th><th>Platform</th><th>User</th><th>Last Seen</th><th>Actions</th></tr></thead>
+          <tbody>
+          <% for (const d of devices) { %>
+          <tr>
+            <td><strong><%= d.name %></strong></td>
+            <td><span class="platform-badge"><%= d.platform || '—' %></span></td>
+            <td class="muted"><%= d.email || '—' %></td>
+            <td class="muted"><%= d.last_seen ? new Date(d.last_seen).toLocaleString() : '—' %></td>
+            <td>
+              <form method="POST" action="/admin/devices/<%= d.id %>/remove" style="display:inline"
+                    onsubmit="return confirm('Remove this device?')">
+                <button class="action-btn danger" title="Remove device">🗑</button>
+              </form>
+            </td>
+          </tr>
+          <% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Activity Log -->
+    <section class="admin-section">
+      <h2 class="section-title">Recent Activity</h2>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Time</th><th>User</th><th>Event</th><th>IP</th><th>Flagged</th></tr></thead>
+          <tbody>
+          <% for (const l of logs) { %>
+          <tr class="<%= l.is_flagged ? 'row-flagged' : '' %>">
+            <td class="muted" style="white-space:nowrap;"><%= new Date(l.created_at).toLocaleString() %></td>
+            <td><%= l.email || 'system' %></td>
+            <td><code class="event-code"><%= l.event_type %></code></td>
+            <td class="muted"><%= l.ip_address || '—' %></td>
+            <td><% if (l.is_flagged) { %><span class="flag-badge">⚑</span><% } %></td>
+          </tr>
+          <% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Reset password modal -->
+<div id="reset-modal" class="modal hidden">
+  <div class="modal-box">
+    <h3>Reset Password</h3>
+    <form method="POST" id="reset-form">
+      <div class="form-group" style="margin:16px 0;">
+        <label>New Password (min 8 chars)</label>
+        <input type="password" name="new_password" minlength="8" required placeholder="New password">
+      </div>
+      <div class="modal-actions">
+        <button type="button" onclick="closeResetModal()" class="action-btn">Cancel</button>
+        <button type="submit" class="action-btn ok">Reset</button>
+      </div>
+    </form>
   </div>
 </div>
-<% } %>
-<%- include('../layouts/app_footer') %>
+
+<script>
+async function loadStats() {
+  const r = await fetch('/admin/api/stats');
+  const d = await r.json();
+  document.getElementById('stat-users').textContent   = d.users;
+  document.getElementById('stat-devices').textContent = d.devices;
+  document.getElementById('stat-notes').textContent   = d.notes;
+  document.getElementById('stat-files').textContent   = d.files;
+}
+loadStats();
+
+function openResetModal(userId) {
+  document.getElementById('reset-form').action = `/admin/users/${userId}/reset-password`;
+  document.getElementById('reset-modal').classList.remove('hidden');
+}
+function closeResetModal() {
+  document.getElementById('reset-modal').classList.add('hidden');
+}
+document.getElementById('reset-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeResetModal();
+});
+</script>
+</body>
+</html>

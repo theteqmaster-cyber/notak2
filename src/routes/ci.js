@@ -1,44 +1,61 @@
-// src/routes/ci.js — Cyber Inspector monitoring routes
+// src/routes/ci.js — CI internal dashboard (audit log, flagged events, rate limit overrides)
+// Access: ci role only. Invisible to all other users.
 const router = require('express').Router();
-const pool = require('../db');
+const pool   = require('../db');
 
-// Dashboard
 router.get('/', async (req, res) => {
   try {
-    const today = new Date().toISOString().slice(0, 10);
-    const [statsRes, recentRes, flaggedRes] = await Promise.all([
-      pool.query(`SELECT
-        (SELECT COUNT(*) FROM activity_logs WHERE event_type='login' AND created_at >= $1) AS logins_today,
-        (SELECT COUNT(*) FROM activity_logs WHERE event_type='login_failed' AND created_at >= $1) AS failed_today,
-        (SELECT COUNT(*) FROM activity_logs WHERE event_type='upload' AND created_at >= $1) AS uploads_today,
-        (SELECT COUNT(*) FROM activity_logs WHERE is_flagged=true) AS flagged_total,
-        (SELECT COUNT(*) FROM users) AS total_users`, [today]),
-      pool.query(`SELECT al.*, u.email AS user_email FROM activity_logs al LEFT JOIN users u ON u.id=al.user_id ORDER BY al.created_at DESC LIMIT 20`),
-      pool.query(`SELECT al.*, u.email AS user_email FROM activity_logs al LEFT JOIN users u ON u.id=al.user_id WHERE al.is_flagged=true ORDER BY al.created_at DESC LIMIT 10`),
+    const [flagged, recent, blocked] = await Promise.all([
+      pool.query(`SELECT l.*,u.email FROM activity_logs l
+                  LEFT JOIN users u ON l.user_id=u.id
+                  WHERE l.is_flagged=true ORDER BY l.created_at DESC LIMIT 200`),
+      pool.query(`SELECT l.*,u.email FROM activity_logs l
+                  LEFT JOIN users u ON l.user_id=u.id
+                  ORDER BY l.created_at DESC LIMIT 500`),
+      pool.query(`SELECT ip_address, COUNT(*) as count, MAX(created_at) as last_seen
+                  FROM activity_logs WHERE event_type='ci:rate_limit'
+                  GROUP BY ip_address ORDER BY count DESC LIMIT 50`),
     ]);
-    res.render('ci/dashboard', { title: 'CI Dashboard', stats: statsRes.rows[0], recent: recentRes.rows, flagged: flaggedRes.rows });
-  } catch (e) { res.render('error', { title: 'Error', code: 500, message: e.message }); }
+    res.render('ci/dashboard', {
+      title: 'CI Dashboard',
+      flagged: flagged.rows,
+      recent:  recent.rows,
+      blocked: blocked.rows,
+      flash: req.session.flash || null,
+    });
+    delete req.session.flash;
+  } catch (e) {
+    res.status(500).render('error', { title: 'Error', code: 500, message: e.message });
+  }
 });
 
-// Full logs with filters
-router.get('/logs', async (req, res) => {
-  const { type, flagged, date } = req.query;
-  let q = `SELECT al.*, u.email AS user_email FROM activity_logs al LEFT JOIN users u ON u.id=al.user_id WHERE 1=1`;
-  const params = [];
-  if (type)    { params.push(type); q += ` AND al.event_type=$${params.length}`; }
-  if (flagged) { q += ` AND al.is_flagged=true`; }
-  if (date)    { params.push(date); q += ` AND al.created_at::date=$${params.length}`; }
-  q += ' ORDER BY al.created_at DESC LIMIT 200';
-  const { rows: logs } = await pool.query(q, params);
-  res.render('ci/logs', { title: 'Activity Logs', logs, filters: req.query });
+// ── Clear a flag ──────────────────────────────────────────────────────────────
+router.post('/clear-flag/:id', async (req, res) => {
+  try {
+    await pool.query('UPDATE activity_logs SET is_flagged=false WHERE id=$1', [req.params.id]);
+    req.session.flash = { type: 'success', message: 'Flag cleared.' };
+  } catch (e) {
+    req.session.flash = { type: 'error', message: e.message };
+  }
+  res.redirect('/ci');
 });
 
-// Flagged alerts only
-router.get('/alerts', async (req, res) => {
-  const { rows: logs } = await pool.query(
-    `SELECT al.*, u.email AS user_email FROM activity_logs al LEFT JOIN users u ON u.id=al.user_id WHERE al.is_flagged=true ORDER BY al.created_at DESC`
-  );
-  res.render('ci/alerts', { title: 'Security Alerts', logs });
+// ── API stats for CI widgets ──────────────────────────────────────────────────
+router.get('/api/stats', async (req, res) => {
+  try {
+    const [flagged, rateLimited, logins, registrations] = await Promise.all([
+      pool.query("SELECT COUNT(*) FROM activity_logs WHERE is_flagged=true"),
+      pool.query("SELECT COUNT(*) FROM activity_logs WHERE event_type='ci:rate_limit' AND created_at>NOW()-INTERVAL '24h'"),
+      pool.query("SELECT COUNT(*) FROM activity_logs WHERE event_type='auth:login' AND created_at>NOW()-INTERVAL '24h'"),
+      pool.query("SELECT COUNT(*) FROM activity_logs WHERE event_type='auth:register' AND created_at>NOW()-INTERVAL '24h'"),
+    ]);
+    res.json({
+      flagged:       parseInt(flagged.rows[0].count),
+      rateLimited:   parseInt(rateLimited.rows[0].count),
+      logins24h:     parseInt(logins.rows[0].count),
+      registrations: parseInt(registrations.rows[0].count),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 module.exports = router;

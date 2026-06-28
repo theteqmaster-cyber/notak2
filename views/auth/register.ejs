@@ -1,31 +1,61 @@
-<%- include('../layouts/auth_header', { title }) %>
-<h2>Create account</h2>
-<p style="color:var(--text-3);margin-bottom:24px;">Join Notak2 to access your semester materials</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Account — Notak2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/auth.css">
+</head>
+<body>
+<div class="auth-bg">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <span class="auth-logo-icon">⬡</span>
+      <span class="auth-logo-name">Notak2</span>
+    </div>
+    <h1 class="auth-title">Create account</h1>
+    <p class="auth-sub">Your personal study workspace awaits</p>
 
-<% if (error) { %>
-<div class="flash flash-error"><%- icon('circle-x') %> <%= error %></div>
-<% } %>
+    <% if (flash) { %>
+    <div class="flash flash-<%= flash.type %>"><%= flash.message %></div>
+    <% } %>
 
-<form method="POST" action="/register">
-  <div class="form-group">
-    <label class="form-label">Full name</label>
-    <input type="text" name="name" class="form-control" placeholder="Your name" required autofocus>
+    <form class="auth-form" method="POST" action="/register">
+      <div class="form-group">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" name="name" placeholder="Mphathisi" required autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="password">Password <span class="hint">(min 8 characters)</span></label>
+        <div class="pw-wrap">
+          <input type="password" id="password" name="password" placeholder="••••••••" required minlength="8" autocomplete="new-password">
+          <button type="button" class="pw-toggle" onclick="togglePw('password')" title="Show/hide">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="confirm">Confirm Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="confirm" name="confirm" placeholder="••••••••" required autocomplete="new-password">
+          <button type="button" class="pw-toggle" onclick="togglePw('confirm')" title="Show/hide">👁</button>
+        </div>
+      </div>
+      <button type="submit" class="auth-btn">Create Account</button>
+    </form>
+
+    <p class="auth-link">Already have an account? <a href="/login">Sign in</a></p>
   </div>
-  <div class="form-group">
-    <label class="form-label">Email address</label>
-    <input type="email" name="email" class="form-control" placeholder="you@example.com" required>
-  </div>
-  <div class="form-group">
-    <label class="form-label">Password</label>
-    <input type="password" name="password" class="form-control" placeholder="Min. 8 characters" required minlength="8">
-  </div>
-  <div class="form-group">
-    <label class="form-label">Confirm password</label>
-    <input type="password" name="password_confirm" class="form-control" placeholder="••••••••" required>
-  </div>
-  <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;margin-top:8px;">Create Account</button>
-</form>
-<p style="text-align:center;margin-top:20px;font-size:13px;color:var(--text-3);">
-  Already have an account? <a href="/login" style="color:var(--primary);font-weight:600;">Sign in</a>
-</p>
-<%- include('../layouts/auth_footer') %>
+</div>
+<script>
+function togglePw(id) {
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+</script>
+</body>
+</html>

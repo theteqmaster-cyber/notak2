@@ -1,55 +1,123 @@
-<%- include('../layouts/app_header', { title }) %>
-<div class="stats-grid" style="margin-bottom:24px;">
-  <% [
-    {label:'Logins Today',value:stats.logins_today,icon:'users',color:'#22C55E',bg:'#DCFCE7'},
-    {label:'Failed Logins',value:stats.failed_today,icon:'triangle-alert',color:'#EF4444',bg:'#FEE2E2'},
-    {label:'Flagged Events',value:stats.flagged_total,icon:'flag',color:'#F59E0B',bg:'#FEF3C7'},
-    {label:'Uploads Today',value:stats.uploads_today,icon:'upload',color:'#4F6EF7',bg:'#EEF1FE'},
-    {label:'Total Users',value:stats.total_users,icon:'users',color:'#8B5CF6',bg:'#EDE9FE'},
-  ].forEach(s => { %>
-  <div class="stat-card">
-    <div class="stat-icon" style="background:<%= s.bg %>;color:<%= s.color %>;"><%- icon(s.icon) %></div>
-    <div class="stat-value"><%= s.value||0 %></div>
-    <div class="stat-label"><%= s.label %></div>
-  </div>
-  <% }) %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>CI Dashboard — Notak2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<div class="admin-shell">
+
+  <header class="admin-header" style="border-bottom-color:rgba(248,113,113,0.2);">
+    <div class="admin-brand">
+      <span class="brand-hex" style="color:#f87171;">⬡</span>
+      <span class="brand-text">Notak2 <em style="color:#f87171;">CI</em></span>
+    </div>
+    <div class="admin-header-right">
+      <span class="admin-user-pill"><%= user.name %></span>
+      <a href="/logout" class="admin-logout-btn">Sign Out</a>
+    </div>
+  </header>
+
+  <main class="admin-main">
+
+    <% if (flash) { %>
+    <div class="flash flash-<%= flash.type %>"><%= flash.message %></div>
+    <% } %>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card danger"><div class="stat-val" id="stat-flagged">—</div><div class="stat-lbl">Flagged Events</div></div>
+      <div class="stat-card warn">  <div class="stat-val" id="stat-rl">—</div>     <div class="stat-lbl">Rate Limited (24h)</div></div>
+      <div class="stat-card ok">    <div class="stat-val" id="stat-logins">—</div> <div class="stat-lbl">Logins (24h)</div></div>
+      <div class="stat-card">       <div class="stat-val" id="stat-reg">—</div>    <div class="stat-lbl">Registrations (24h)</div></div>
+    </div>
+
+    <!-- Flagged Events -->
+    <section class="admin-section">
+      <h2 class="section-title" style="color:#f87171;">⚑ Flagged Events (<%= flagged.length %>)</h2>
+      <% if (!flagged.length) { %>
+      <p class="muted" style="padding:16px;">No flagged events. All clear.</p>
+      <% } else { %>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Time</th><th>User</th><th>Event</th><th>IP</th><th>Action</th></tr></thead>
+          <tbody>
+          <% for (const l of flagged) { %>
+          <tr class="row-flagged">
+            <td class="muted" style="white-space:nowrap;"><%= new Date(l.created_at).toLocaleString() %></td>
+            <td><%= l.email || 'system' %></td>
+            <td><code class="event-code"><%= l.event_type %></code></td>
+            <td class="muted"><%= l.ip_address || '—' %></td>
+            <td>
+              <form method="POST" action="/ci/clear-flag/<%= l.id %>" style="display:inline">
+                <button class="action-btn ok" title="Clear flag">✓ Clear</button>
+              </form>
+            </td>
+          </tr>
+          <% } %>
+          </tbody>
+        </table>
+      </div>
+      <% } %>
+    </section>
+
+    <!-- Rate Limited IPs -->
+    <section class="admin-section">
+      <h2 class="section-title">Rate-Limited IPs</h2>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>IP Address</th><th>Hit Count</th><th>Last Seen</th></tr></thead>
+          <tbody>
+          <% for (const b of blocked) { %>
+          <tr>
+            <td><strong><%= b.ip_address %></strong></td>
+            <td><span class="role-badge role-ci"><%= b.count %></span></td>
+            <td class="muted"><%= new Date(b.last_seen).toLocaleString() %></td>
+          </tr>
+          <% } %>
+          <% if (!blocked.length) { %><tr><td colspan="3" class="muted">None</td></tr><% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Full Recent Log -->
+    <section class="admin-section">
+      <h2 class="section-title">Full Audit Log (last 500)</h2>
+      <div class="table-wrap">
+        <table class="admin-table">
+          <thead><tr><th>Time</th><th>User</th><th>Event</th><th>IP</th><th>Flag</th></tr></thead>
+          <tbody>
+          <% for (const l of recent) { %>
+          <tr class="<%= l.is_flagged ? 'row-flagged' : '' %>">
+            <td class="muted" style="white-space:nowrap;"><%= new Date(l.created_at).toLocaleString() %></td>
+            <td><%= l.email || 'system' %></td>
+            <td><code class="event-code"><%= l.event_type %></code></td>
+            <td class="muted"><%= l.ip_address || '—' %></td>
+            <td><% if (l.is_flagged) { %><span class="flag-badge">⚑</span><% } %></td>
+          </tr>
+          <% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
 </div>
-<div style="display:flex;gap:10px;margin-bottom:24px;">
-  <a href="/ci/logs" class="btn btn-secondary"><%- icon('scroll-text') %> All Logs</a>
-  <a href="/ci/alerts" class="btn btn-danger"><%- icon('flag') %> Alerts</a>
-</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-  <div class="card">
-    <div class="card-header"><span class="card-title">Recent Activity</span></div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Event</th><th>User</th><th>When</th></tr></thead>
-      <tbody>
-        <% recent.forEach(log => { %>
-        <tr class="<%= log.is_flagged?'log-flagged':'' %>">
-          <td style="font-size:13px;"><%= log.event_type %></td>
-          <td style="font-size:12px;"><%= log.user_email||'Guest' %></td>
-          <td style="font-size:11px;color:var(--text-3);"><%= new Date(log.created_at).toLocaleString() %></td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table></div>
-  </div>
-  <div class="card">
-    <div class="card-header"><span class="card-title" style="color:var(--danger);">⚠ Flagged</span></div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>Event</th><th>IP</th><th>When</th></tr></thead>
-      <tbody>
-        <% if (!flagged.length) { %>
-        <tr><td colspan="3" style="text-align:center;padding:24px;color:var(--accent);font-weight:600;">All clear</td></tr>
-        <% } else { flagged.forEach(log => { %>
-        <tr class="log-flagged">
-          <td style="font-weight:600;font-size:13px;"><%= log.event_type %></td>
-          <td style="font-size:12px;font-family:monospace;"><%= log.ip_address||'—' %></td>
-          <td style="font-size:11px;color:var(--text-3);"><%= new Date(log.created_at).toLocaleString() %></td>
-        </tr>
-        <% }) } %>
-      </tbody>
-    </table></div>
-  </div>
-</div>
-<%- include('../layouts/app_footer') %>
+<script>
+async function loadStats() {
+  const r = await fetch('/ci/api/stats');
+  const d = await r.json();
+  document.getElementById('stat-flagged').textContent = d.flagged;
+  document.getElementById('stat-rl').textContent      = d.rateLimited;
+  document.getElementById('stat-logins').textContent  = d.logins24h;
+  document.getElementById('stat-reg').textContent     = d.registrations;
+}
+loadStats();
+</script>
+</body>
+</html>

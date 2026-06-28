@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Name=Notak2
+Comment=Local-first study workspace
+Exec=/home/mphatic/Desktop/notak2/launch-notak2.sh
+Icon=utilities-terminal
+Terminal=false
+Type=Application
+Categories=Education;Utility;

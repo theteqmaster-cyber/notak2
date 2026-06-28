@@ -4,14 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= code %> — Notak2</title>
-  <link rel="stylesheet" href="/css/app.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/auth.css">
 </head>
-<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);">
-  <div style="text-align:center;padding:40px;">
-    <div style="font-size:72px;font-weight:800;color:var(--border);line-height:1;"><%= code %></div>
-    <div style="font-size:20px;font-weight:700;margin-bottom:8px;"><%= title %></div>
-    <div style="color:var(--text-3);margin-bottom:24px;"><%= message %></div>
-    <a href="/" class="btn btn-primary">Go Home</a>
+<body>
+<div class="auth-bg">
+  <div class="auth-card" style="text-align:center;">
+    <div class="auth-logo">
+      <span class="auth-logo-icon">⬡</span>
+      <span class="auth-logo-name">Notak2</span>
+    </div>
+    <div style="font-size:64px;font-weight:800;color:var(--accent);margin:16px 0;"><%= code %></div>
+    <h1 class="auth-title"><%= title %></h1>
+    <p class="auth-sub" style="margin-bottom:32px;"><%= message %></p>
+    <a href="/" class="auth-btn" style="display:inline-block;text-decoration:none;">← Go Home</a>
   </div>
+</div>
 </body>
 </html>

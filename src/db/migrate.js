@@ -1,8 +1,11 @@
-// src/db/migrate.js — Runs DDL on startup (idempotent)
-const pool = require('./index');
+// src/db/migrate.js — Idempotent schema for both Supabase (cloud) and local SQLite
+require('dotenv').config();
+const pool   = require('./index');
+const local  = require('./local');
 const bcrypt = require('bcrypt');
 
-const SQL = `
+// ─── CLOUD SCHEMA (Supabase Postgres) ────────────────────────────────────────
+const CLOUD_SQL = `
   CREATE TABLE IF NOT EXISTS users (
     id          SERIAL PRIMARY KEY,
     name        TEXT NOT NULL,
@@ -20,40 +23,66 @@ const SQL = `
   );
   CREATE INDEX IF NOT EXISTS sessions_expire_idx ON sessions (expire);
 
-  CREATE TABLE IF NOT EXISTS semesters (
-    id            SERIAL PRIMARY KEY,
-    name          TEXT NOT NULL,
-    academic_year TEXT,
-    status        TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','archived')),
-    start_date    DATE,
-    end_date      DATE,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
-  );
-
-  CREATE TABLE IF NOT EXISTS courses (
-    id          SERIAL PRIMARY KEY,
-    semester_id INTEGER NOT NULL REFERENCES semesters(id) ON DELETE CASCADE,
+  CREATE TABLE IF NOT EXISTS devices (
+    id          TEXT PRIMARY KEY,
+    user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
     name        TEXT NOT NULL,
-    code        TEXT,
-    color       TEXT DEFAULT '#4F6EF7',
+    platform    TEXT,
+    app_version TEXT,
+    last_seen   TIMESTAMPTZ DEFAULT NOW(),
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
-  CREATE TABLE IF NOT EXISTS napts_items (
-    id             SERIAL PRIMARY KEY,
-    course_id      INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    uploaded_by    INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    type           CHAR(1) NOT NULL CHECK (type IN ('N','A','P','T','S')),
-    title          TEXT NOT NULL,
-    description    TEXT,
-    tags           TEXT,
-    file_key       TEXT,
-    file_name      TEXT,
-    file_mime      TEXT,
-    file_size      BIGINT,
-    external_url   TEXT,
-    download_count INTEGER NOT NULL DEFAULT 0,
-    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  CREATE TABLE IF NOT EXISTS workspaces (
+    id          SERIAL PRIMARY KEY,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    color       TEXT NOT NULL DEFAULT '#4F6EF7',
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS folders (
+    id           SERIAL PRIMARY KEY,
+    workspace_id INTEGER NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name         TEXT NOT NULL,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS notes (
+    id           TEXT PRIMARY KEY,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    folder_id    INTEGER REFERENCES folders(id) ON DELETE SET NULL,
+    title        TEXT NOT NULL DEFAULT 'Untitled',
+    content      TEXT NOT NULL DEFAULT '',
+    vector_clock JSONB NOT NULL DEFAULT '{}',
+    sync_status  TEXT NOT NULL DEFAULT 'synced' CHECK (sync_status IN ('synced','conflict','pending')),
+    deleted_at   TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS files (
+    id           TEXT PRIMARY KEY,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    folder_id    INTEGER REFERENCES folders(id) ON DELETE SET NULL,
+    name         TEXT NOT NULL,
+    mime         TEXT,
+    size         BIGINT,
+    r2_key       TEXT NOT NULL,
+    vector_clock JSONB NOT NULL DEFAULT '{}',
+    deleted_at   TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+
+  CREATE TABLE IF NOT EXISTS sync_log (
+    id         SERIAL PRIMARY KEY,
+    device_id  TEXT,
+    user_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    entity     TEXT NOT NULL,
+    entity_id  TEXT NOT NULL,
+    action     TEXT NOT NULL,
+    payload    JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
 
   CREATE TABLE IF NOT EXISTS activity_logs (
@@ -66,42 +95,119 @@ const SQL = `
     is_flagged  BOOLEAN NOT NULL DEFAULT false,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
   );
+
+  CREATE TABLE IF NOT EXISTS app_versions (
+    id          SERIAL PRIMARY KEY,
+    version     TEXT NOT NULL,
+    notes       TEXT,
+    published_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
 `;
 
+// ─── LOCAL SQLITE SCHEMA ──────────────────────────────────────────────────────
+function migrateLocal() {
+  if (!local) return;
+  local.exec(`
+    CREATE TABLE IF NOT EXISTS workspaces (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      cloud_id   INTEGER,
+      name       TEXT NOT NULL,
+      color      TEXT NOT NULL DEFAULT '#4F6EF7',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      synced_at  TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS folders (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      cloud_id     INTEGER,
+      workspace_id INTEGER NOT NULL,
+      name         TEXT NOT NULL,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      synced_at    TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS notes (
+      id           TEXT PRIMARY KEY,
+      cloud_synced INTEGER NOT NULL DEFAULT 0,
+      folder_id    INTEGER,
+      title        TEXT NOT NULL DEFAULT 'Untitled',
+      content      TEXT NOT NULL DEFAULT '',
+      vector_clock TEXT NOT NULL DEFAULT '{}',
+      sync_status  TEXT NOT NULL DEFAULT 'pending',
+      deleted_at   TEXT,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS files (
+      id           TEXT PRIMARY KEY,
+      cloud_synced INTEGER NOT NULL DEFAULT 0,
+      folder_id    INTEGER,
+      name         TEXT NOT NULL,
+      mime         TEXT,
+      size         INTEGER,
+      r2_key       TEXT NOT NULL,
+      vector_clock TEXT NOT NULL DEFAULT '{}',
+      deleted_at   TEXT,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS sync_queue (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      entity      TEXT NOT NULL,
+      entity_id   TEXT NOT NULL,
+      action      TEXT NOT NULL,
+      payload     TEXT NOT NULL,
+      device_id   TEXT NOT NULL,
+      local_seq   INTEGER NOT NULL,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      synced_at   TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS local_meta (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `);
+  console.log('[local.db] Schema ready');
+}
+
+// ─── SEED DEFAULTS ────────────────────────────────────────────────────────────
+async function seedDefaults(client) {
+  const adminEmail = 'admin@notak2.app';
+  const { rows: adminRows } = await client.query('SELECT id FROM users WHERE email=$1', [adminEmail]);
+  if (!adminRows.length) {
+    const hash = await bcrypt.hash('changeme_admin_2026!', 12);
+    await client.query(
+      `INSERT INTO users (name,email,password,role,is_active) VALUES ($1,$2,$3,$4,$5)`,
+      ['Notak2 Admin', adminEmail, hash, 'admin', true]
+    );
+    console.log('[migrate] Seeded admin account');
+  }
+
+  const ciEmail = 'ci@notak2.app';
+  const { rows: ciRows } = await client.query('SELECT id FROM users WHERE email=$1', [ciEmail]);
+  if (!ciRows.length) {
+    const hash = await bcrypt.hash('changeme_ci_2026!', 12);
+    await client.query(
+      `INSERT INTO users (name,email,password,role,is_active) VALUES ($1,$2,$3,$4,$5)`,
+      ['Cyber Inspector', ciEmail, hash, 'ci', true]
+    );
+    console.log('[migrate] Seeded CI account');
+  }
+}
+
+// ─── MAIN ─────────────────────────────────────────────────────────────────────
 async function migrate() {
   const client = await pool.connect();
   try {
-    // Clean up any legacy zip archives table
-    await client.query('DROP TABLE IF EXISTS semester_archives CASCADE');
-    await client.query(SQL);
-    console.log('[migrate] Schema up to date');
-
-    // Seed default admin
-    const adminEmail = 'admin@notak2.app';
-    const adminExists = await client.query('SELECT id FROM users WHERE email = $1', [adminEmail]);
-    if (!adminExists.rows.length) {
-      const adminHash = await bcrypt.hash('changeme_admin_2026!', 12);
-      await client.query(
-        `INSERT INTO users (name, email, password, role, is_active) VALUES ($1, $2, $3, $4, $5)`,
-        ['Notak2 Admin', adminEmail, adminHash, 'admin', true]
-      );
-      console.log('[migrate] Seeded default admin account');
-    }
-
-    // Seed default CI
-    const ciEmail = 'ci@notak2.app';
-    const ciExists = await client.query('SELECT id FROM users WHERE email = $1', [ciEmail]);
-    if (!ciExists.rows.length) {
-      const ciHash = await bcrypt.hash('changeme_ci_2026!', 12);
-      await client.query(
-        `INSERT INTO users (name, email, password, role, is_active) VALUES ($1, $2, $3, $4, $5)`,
-        ['Cyber Inspector', ciEmail, ciHash, 'ci', true]
-      );
-      console.log('[migrate] Seeded default CI account');
-    }
+    await client.query(CLOUD_SQL);
+    console.log('[migrate] Cloud schema up to date');
+    await seedDefaults(client);
   } finally {
     client.release();
   }
+  migrateLocal();
 }
 
 module.exports = migrate;
