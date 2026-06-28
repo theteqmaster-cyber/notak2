@@ -109,6 +109,11 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// ── Render Health Check ───────────────────────────────────────────────────────
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
   if (req.path.startsWith('/api') || req.path.startsWith('/sync')) {
@@ -131,8 +136,8 @@ const PORT = process.env.PORT || 8080;
 
 migrate()
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`[notak2] ${IS_WEB ? 'WEB' : 'LOCAL'} mode — http://localhost:${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`[notak2] ${IS_WEB ? 'WEB' : 'LOCAL'} mode — Binding to 0.0.0.0:${PORT}`);
       console.log(`[notak2] Device: ${IS_WEB ? 'web' : require('./src/db/device').id}`);
       updater.start();
     });
