@@ -1,5 +1,6 @@
 // src/db/index.js — PostgreSQL pool (Supabase)
 const { Pool } = require('pg');
+const logger = require('../helpers/logger');
 
 const pool = new Pool({
   connectionString: process.env.DB_URL,
@@ -9,7 +10,7 @@ const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  console.error('[db] Unexpected pool error:', err.message);
+  logger.error(err, '[db] Unexpected pool error');
 });
 
 module.exports = pool;

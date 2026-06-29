@@ -1,8 +1,8 @@
-// src/db/migrate.js — Idempotent schema for both Supabase (cloud) and local SQLite
+// src/db/migrate.js — Idempotent schema for Supabase (cloud)
 require('dotenv').config();
 const pool   = require('./index');
-const local  = require('./local');
 const bcrypt = require('bcrypt');
+const logger = require('../helpers/logger');
 
 // ─── CLOUD SCHEMA (Supabase Postgres) ────────────────────────────────────────
 const CLOUD_SQL = `
@@ -104,73 +104,7 @@ const CLOUD_SQL = `
   );
 `;
 
-// ─── LOCAL SQLITE SCHEMA ──────────────────────────────────────────────────────
-function migrateLocal() {
-  if (!local) return;
-  local.exec(`
-    CREATE TABLE IF NOT EXISTS workspaces (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      cloud_id   INTEGER,
-      name       TEXT NOT NULL,
-      color      TEXT NOT NULL DEFAULT '#4F6EF7',
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      synced_at  TEXT
-    );
 
-    CREATE TABLE IF NOT EXISTS folders (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      cloud_id     INTEGER,
-      workspace_id INTEGER NOT NULL,
-      name         TEXT NOT NULL,
-      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-      synced_at    TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS notes (
-      id           TEXT PRIMARY KEY,
-      cloud_synced INTEGER NOT NULL DEFAULT 0,
-      folder_id    INTEGER,
-      title        TEXT NOT NULL DEFAULT 'Untitled',
-      content      TEXT NOT NULL DEFAULT '',
-      vector_clock TEXT NOT NULL DEFAULT '{}',
-      sync_status  TEXT NOT NULL DEFAULT 'pending',
-      deleted_at   TEXT,
-      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS files (
-      id           TEXT PRIMARY KEY,
-      cloud_synced INTEGER NOT NULL DEFAULT 0,
-      folder_id    INTEGER,
-      name         TEXT NOT NULL,
-      mime         TEXT,
-      size         INTEGER,
-      r2_key       TEXT NOT NULL,
-      vector_clock TEXT NOT NULL DEFAULT '{}',
-      deleted_at   TEXT,
-      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS sync_queue (
-      id          INTEGER PRIMARY KEY AUTOINCREMENT,
-      entity      TEXT NOT NULL,
-      entity_id   TEXT NOT NULL,
-      action      TEXT NOT NULL,
-      payload     TEXT NOT NULL,
-      device_id   TEXT NOT NULL,
-      local_seq   INTEGER NOT NULL,
-      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-      synced_at   TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS local_meta (
-      key   TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-  `);
-  console.log('[local.db] Schema ready');
-}
 
 // ─── SEED DEFAULTS ────────────────────────────────────────────────────────────
 async function seedDefaults(client) {
@@ -182,7 +116,7 @@ async function seedDefaults(client) {
       `INSERT INTO users (name,email,password,role,is_active) VALUES ($1,$2,$3,$4,$5)`,
       ['Notak2 Admin', adminEmail, hash, 'admin', true]
     );
-    console.log('[migrate] Seeded admin account');
+    logger.info('[migrate] Seeded admin account');
   }
 
   const ciEmail = 'ci@notak2.app';
@@ -193,7 +127,7 @@ async function seedDefaults(client) {
       `INSERT INTO users (name,email,password,role,is_active) VALUES ($1,$2,$3,$4,$5)`,
       ['Cyber Inspector', ciEmail, hash, 'ci', true]
     );
-    console.log('[migrate] Seeded CI account');
+    logger.info('[migrate] Seeded CI account');
   }
 }
 
@@ -202,12 +136,11 @@ async function migrate() {
   const client = await pool.connect();
   try {
     await client.query(CLOUD_SQL);
-    console.log('[migrate] Cloud schema up to date');
+    logger.info('[migrate] Cloud schema up to date');
     await seedDefaults(client);
   } finally {
     client.release();
   }
-  migrateLocal();
 }
 
 module.exports = migrate;

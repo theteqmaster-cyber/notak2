@@ -1,5 +1,5 @@
 // server.js — Notak2 v2 entry point
-// Local-first, multi-device, offline-capable study system
+// Multi-device online study system
 require('dotenv').config();
 const express    = require('express');
 const session    = require('express-session');
@@ -7,11 +7,9 @@ const PgSession  = require('connect-pg-simple')(session);
 const path       = require('path');
 const pool       = require('./src/db');
 const migrate    = require('./src/db/migrate');
-const updater    = require('./src/updater/agent');
 const { requireAuth, requireRole } = require('./src/middleware/auth');
 const { sessionGuard }             = require('./src/middleware/ci');
-
-const IS_WEB = process.env.DEVICE_MODE === 'web';
+const logger     = require('./src/helpers/logger');
 
 const app = express();
 
@@ -38,7 +36,7 @@ app.use(session({
   proxy: true, // Force proxy recognition
   cookie: {
     maxAge:   7 * 24 * 60 * 60 * 1000,
-    secure:   false, // Render handles HTTPS termination, force false for debugging
+    secure:   process.env.NODE_ENV === 'production',
     httpOnly: true,
     sameSite: 'lax',
   },
@@ -52,7 +50,7 @@ app.use((req, res, next) => {
   res.locals.user  = req.session.user || null;
   res.locals.flash = req.session.flash || null;
   res.locals.path  = req.path;
-  res.locals.isWeb = IS_WEB;
+  res.locals.isWeb = true;
   delete req.session.flash;
   next();
 });
@@ -72,23 +70,6 @@ app.get('/app', requireAuth, (req, res) => {
 // ── REST API (SPA data layer) ─────────────────────────────────────────────────
 app.use('/api', requireAuth, require('./src/routes/api'));
 
-// ── Sync endpoints (PC clients) ───────────────────────────────────────────────
-app.use('/sync', requireAuth, require('./src/routes/sync'));
-
-// ── Update agent API ──────────────────────────────────────────────────────────
-app.get('/api/update-status', requireAuth, (req, res) => {
-  res.json(updater.getStatus());
-});
-
-app.post('/api/update-perform', requireAuth, (req, res) => {
-  if (IS_WEB) return res.status(400).json({ error: 'Web version cannot self-update.' });
-  res.json({ ok: true, message: 'Update started. Server will restart shortly.' });
-  setTimeout(() => {
-    try { updater.performUpdate(); }
-    catch (e) { console.error('[update] Failed:', e.message); }
-  }, 500);
-});
-
 // ── Admin dashboard ───────────────────────────────────────────────────────────
 app.use('/admin', requireAuth, requireRole('admin'), require('./src/routes/admin'));
 
@@ -102,22 +83,22 @@ app.get('/', (req, res) => {
   res.redirect(dest);
 });
 
-// ── PWA: serve index.html for any unmatched route (SPA deep links) ────────────
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api') || req.path.startsWith('/sync') ||
-      req.path.startsWith('/admin') || req.path.startsWith('/ci') ||
-      req.path === '/login' || req.path === '/register') return next();
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
 // ── Render Health Check ───────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.status(200).send('OK');
 });
 
+// ── PWA: serve index.html for any unmatched route (SPA deep links) ────────────
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') ||
+      req.path.startsWith('/admin') || req.path.startsWith('/ci') ||
+      req.path === '/login' || req.path === '/register') return next();
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
-  if (req.path.startsWith('/api') || req.path.startsWith('/sync')) {
+  if (req.path.startsWith('/api')) {
     return res.status(404).json({ error: 'Not found' });
   }
   res.status(404).render('error', { title: 'Not Found', code: 404, message: 'Page not found.' });
@@ -125,8 +106,8 @@ app.use((req, res) => {
 
 // ── 500 ───────────────────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error('[server]', err);
-  if (req.path.startsWith('/api') || req.path.startsWith('/sync')) {
+  logger.error(err, '[server] Internal error');
+  if (req.path.startsWith('/api')) {
     return res.status(500).json({ error: 'Internal server error' });
   }
   res.status(500).render('error', { title: 'Server Error', code: 500, message: 'An unexpected error occurred.' });
@@ -135,15 +116,23 @@ app.use((err, req, res, next) => {
 // ── Boot ──────────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 8080;
 
+process.on('uncaughtException', (err) => {
+  logger.fatal(err, 'Uncaught Exception');
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (err) => {
+  logger.fatal(err, 'Unhandled Rejection');
+  process.exit(1);
+});
+
 migrate()
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`[notak2] ${IS_WEB ? 'WEB' : 'LOCAL'} mode — Binding to 0.0.0.0:${PORT}`);
-      console.log(`[notak2] Device: ${IS_WEB ? 'web' : require('./src/db/device').id}`);
-      updater.start();
+      logger.info(`[notak2] ONLINE mode — Binding to 0.0.0.0:${PORT}`);
     });
   })
   .catch(err => {
-    console.error('[notak2] Boot failed:', err.message);
+    logger.fatal(err, '[notak2] Boot failed');
     process.exit(1);
   });

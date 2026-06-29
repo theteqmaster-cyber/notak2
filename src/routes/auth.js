@@ -1,9 +1,10 @@
-// src/routes/auth.js — Registration, login, logout + device registration
+// src/routes/auth.js — Registration, login, logout
 const router  = require('express').Router();
 const bcrypt  = require('bcrypt');
 const pool    = require('../db');
 const { requireGuest } = require('../middleware/auth');
 const { loginLimiter, logEvent } = require('../middleware/ci');
+const logger  = require('../helpers/logger');
 
 // ── GET /login ────────────────────────────────────────────────────────────────
 router.get('/login', requireGuest, (req, res) => {
@@ -48,7 +49,7 @@ router.post('/register', requireGuest, async (req, res) => {
     await logEvent(req, 'auth:register', `New user registered: ${email}`, false);
     res.redirect('/app');
   } catch (err) {
-    console.error('[auth] register error:', err.message);
+    logger.error(err, '[auth] register error');
     req.session.flash = { type: 'error', message: 'Registration failed. Try again.' };
     res.redirect('/register');
   }
@@ -56,7 +57,7 @@ router.post('/register', requireGuest, async (req, res) => {
 
 // ── POST /login ───────────────────────────────────────────────────────────────
 router.post('/login', requireGuest, loginLimiter, async (req, res) => {
-  const { email, password, device_id, device_name, device_platform } = req.body;
+  const { email, password } = req.body;
   if (!email || !password) {
     req.session.flash = { type: 'error', message: 'Email and password are required.' };
     return res.redirect('/login');
@@ -79,23 +80,12 @@ router.post('/login', requireGuest, loginLimiter, async (req, res) => {
     req.session.user = { id: user.id, name: user.name, email: user.email, role: user.role };
     req.session.originIP = req.ip;
 
-    // Register device if a device_id was provided (PC client sends this)
-    if (device_id) {
-      req.session.device_id = device_id;
-      await pool.query(
-        `INSERT INTO devices (id,user_id,name,platform,last_seen)
-         VALUES ($1,$2,$3,$4,NOW())
-         ON CONFLICT (id) DO UPDATE SET last_seen=NOW(), name=$3`,
-        [device_id, user.id, device_name || 'Unknown Device', device_platform || 'unknown']
-      );
-    }
-
     await logEvent(req, 'auth:login', `User logged in: ${email}`, false);
 
     const dest = { admin: '/admin', ci: '/ci' }[user.role] || '/app';
     res.redirect(dest);
   } catch (err) {
-    console.error('[auth] login error:', err.message);
+    logger.error(err, '[auth] login error');
     req.session.flash = { type: 'error', message: 'Login failed. Try again.' };
     res.redirect('/login');
   }

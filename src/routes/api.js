@@ -6,6 +6,7 @@ const pool    = require('../db');
 const { apiLimiter } = require('../middleware/ci');
 const multer  = require('multer');
 const r2      = require('../storage/r2');
+const logger  = require('../helpers/logger');
 
 router.use(apiLimiter);
 
@@ -148,29 +149,27 @@ router.get('/notes/:id', async (req, res) => {
 });
 
 router.post('/notes', async (req, res) => {
-  const { title, content, folder_id, id, vector_clock } = req.body;
+  const { title, content, folder_id, id } = req.body;
   const noteId = id || crypto.randomUUID();
   try {
     const { rows } = await pool.query(
-      `INSERT INTO notes (id,user_id,folder_id,title,content,vector_clock,sync_status)
-       VALUES ($1,$2,$3,$4,$5,$6,'synced') RETURNING *`,
-      [noteId, req.session.user.id, folder_id || null, title || 'Untitled', content || '', JSON.stringify(vector_clock || {})]
+      `INSERT INTO notes (id,user_id,folder_id,title,content)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [noteId, req.session.user.id, folder_id || null, title || 'Untitled', content || '']
     );
     res.json(rows[0]);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.put('/notes/:id', async (req, res) => {
-  const { title, content, folder_id, vector_clock, sync_status } = req.body;
+  const { title, content, folder_id } = req.body;
   try {
     const { rows } = await pool.query(
       `UPDATE notes
        SET title=COALESCE($1,title), content=COALESCE($2,content),
-           folder_id=COALESCE($3,folder_id), vector_clock=COALESCE($4,vector_clock),
-           sync_status=COALESCE($5,sync_status), updated_at=NOW()
-       WHERE id=$6 AND user_id=$7 RETURNING *`,
-      [title, content, folder_id, vector_clock ? JSON.stringify(vector_clock) : null,
-       sync_status, req.params.id, req.session.user.id]
+           folder_id=COALESCE($3,folder_id), updated_at=NOW()
+       WHERE id=$4 AND user_id=$5 RETURNING *`,
+      [title, content, folder_id, req.params.id, req.session.user.id]
     );
     if (!rows.length) return res.status(404).json({ error: 'Not found' });
     res.json(rows[0]);
@@ -243,7 +242,7 @@ router.post('/files', upload.single('file'), async (req, res) => {
     );
     res.json(rows[0]);
   } catch (e) {
-    console.error('[r2 upload]', e);
+    logger.error(e, '[r2 upload]');
     res.status(500).json({ error: e.message });
   }
 });
@@ -277,17 +276,7 @@ router.delete('/files/:id', async (req, res) => {
 
 // ── USER PROFILE ──────────────────────────────────────────────────────────────
 router.get('/me', (req, res) => {
-  res.json({ user: req.session.user, device_id: req.session.device_id || null });
-});
-
-// ── VERSION CHECK (for update agent) ─────────────────────────────────────────
-router.get('/version', async (req, res) => {
-  try {
-    const { rows } = await pool.query(
-      'SELECT version FROM app_versions ORDER BY published_at DESC LIMIT 1'
-    );
-    res.json({ latest: rows[0]?.version || '2.0.0' });
-  } catch (e) { res.json({ latest: '2.0.0' }); }
+  res.json({ user: req.session.user });
 });
 
 module.exports = router;
