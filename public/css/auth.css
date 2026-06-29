@@ -2,18 +2,18 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:       #0a0a0f;
-  --surface:  #111118;
-  --border:   #1e1e2e;
-  --accent:   #6c63ff;
-  --accent2:  #a78bfa;
-  --text:     #e8e8f0;
-  --muted:    #7070a0;
-  --danger:   #f87171;
-  --success:  #34d399;
-  --warn:     #fbbf24;
-  --radius:   14px;
-  --font:     'Inter', system-ui, sans-serif;
+  --bg:       #090B10;
+  --surface:  rgba(20, 24, 36, 0.65);
+  --border:   rgba(255, 255, 255, 0.08);
+  --accent:   #6366F1;
+  --accent2:  #A855F7;
+  --text:     #F8FAFC;
+  --muted:    #94A3B8;
+  --danger:   #F43F5E;
+  --success:  #10B981;
+  --warn:     #F59E0B;
+  --radius:   20px;
+  --font:     'Outfit', 'Inter', system-ui, sans-serif;
 }
 
 body {
@@ -43,10 +43,12 @@ body {
   width: 100%;
   max-width: 420px;
   background: var(--surface);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border);
-  border-radius: calc(var(--radius) * 1.5);
+  border-radius: var(--radius);
   padding: 40px 36px;
-  box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(108,99,255,0.08);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.5), 0 0 0 1px rgba(99,102,241,0.1);
 }
 
 .auth-logo {
