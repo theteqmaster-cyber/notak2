@@ -33,14 +33,16 @@ exports.apiLimiter = rateLimit({
 exports.sessionGuard = (req, res, next) => {
   if (!req.session.user) return next();
 
-  // Flag if IP changed mid-session (potential session hijack)
+  // NOTE: We intentionally do NOT destroy sessions on IP change.
+  // IP addresses change legitimately: WiFi <-> mobile, ISP rotation,
+  // CDN/load-balancer edge nodes. Destroying sessions on IP change
+  // causes random logouts which is worse UX than the marginal security gain.
+  // Instead we AUDIT-LOG the change so an admin can investigate if needed.
   const currentIP = req.ip;
   if (req.session.originIP && req.session.originIP !== currentIP) {
     logEvent(req, 'ci:session_ip_change',
-      `Session IP changed from ${req.session.originIP} to ${currentIP}`, true);
-    req.session.destroy();
-    if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Session invalidated.' });
-    return res.redirect('/login');
+      `Session IP changed from ${req.session.originIP} to ${currentIP} — session preserved`, false);
+    req.session.originIP = currentIP; // update to new IP
   }
   if (!req.session.originIP) req.session.originIP = currentIP;
   next();

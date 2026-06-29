@@ -30,7 +30,13 @@ app.use(express.json({ limit: '10mb' }));
 // ── Sessions → Supabase Postgres ──────────────────────────────────────────────
 app.use(session({
   store: new PgSession({ pool, tableName: 'sessions', createTableIfMissing: true }),
-  secret: process.env.SESSION_SECRET || 'notak2-dev-secret-change-me',
+  secret: (() => {
+    const s = process.env.SESSION_SECRET;
+    if (!s && process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: SESSION_SECRET env var is required in production!');
+    }
+    return s || 'notak2-dev-secret-DO-NOT-USE-IN-PROD';
+  })(),
   resave: false,
   saveUninitialized: false,
   proxy: true, // Force proxy recognition
