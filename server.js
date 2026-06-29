@@ -14,7 +14,7 @@ const logger     = require('./src/helpers/logger');
 const app = express();
 
 // ── Trust proxy ───────────────────────────────────────────────────────────────
-app.set('trust proxy', true); // Trust all proxies for Render
+app.set('trust proxy', 1); // Trust first proxy for Render (avoids express-rate-limit validation error)
 
 // ── View engine (auth + admin + ci pages only) ────────────────────────────────
 app.set('view engine', 'ejs');
